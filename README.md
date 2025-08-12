@@ -40,4 +40,4 @@ Feel free to adjust this section as needed to match your actual repository layou
 │   ├── src/
 └── README.md
 ```
-[1]: https://ftn.uns.ac.rs/courses/EM508/razvoj-softvera-za-embeded-operativne-sisteme/?utm_source=chatgpt.com "Software Development For Embedded Operating Systems - FTN"
+[1]: https://ftn.uns.ac.rs/courses/EM508/razvoj-softvera-za-embeded-operativne-sisteme/ "Software Development For Embedded Operating Systems - FTN"
