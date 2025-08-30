@@ -28,16 +28,4 @@ Lectures, auditory (theory) exercises, laboratory sessions, and consultations.([
 
 ---
 
-## Repository Structure
-
-Feel free to adjust this section as needed to match your actual repository layout:
-
-```
-.
-├── project1/
-│   ├── src/
-├── project2/
-│   ├── src/
-└── README.md
-```
 [1]: https://ftn.uns.ac.rs/courses/EM508/razvoj-softvera-za-embeded-operativne-sisteme/ "Software Development For Embedded Operating Systems - FTN"
