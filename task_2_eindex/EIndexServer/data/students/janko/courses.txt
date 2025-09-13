@@ -1,0 +1,3 @@
+Economy;T1:20|T2:30|Z1:10|Z2:20
+Biology;T:11|Z:20|Project:58
+Mathematics;T1:15|T2:15|Z1:29|Z2:29
