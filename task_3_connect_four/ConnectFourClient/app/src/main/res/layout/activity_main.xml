@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    tools:context=".MainActivity">
+
+    <!-- Login Title -->
+    <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Login"
+        android:textAllCaps="true"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Username -->
+    <EditText
+        android:id="@+id/editTextUsername"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Username"
+        android:inputType="textPersonName"
+        android:maxLines="1"
+        android:textAlignment="center"
+        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
+
+    <!-- Server IP -->
+    <EditText
+        android:id="@+id/editTextServerIp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Server IP Address"
+        android:inputType="textUri"
+        android:maxLines="1"
+        android:textAlignment="center"
+        app:layout_constraintTop_toBottomOf="@id/editTextUsername"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Port -->
+    <EditText
+        android:id="@+id/editTextPort"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Port Number"
+        android:inputType="number"
+        android:maxLines="1"
+        android:textAlignment="center"
+        app:layout_constraintTop_toBottomOf="@id/editTextServerIp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Connect Button -->
+    <Button
+        android:id="@+id/buttonConnect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connect to Server"
+        app:layout_constraintTop_toBottomOf="@id/editTextPort"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
+
+    <!-- Connected Players Title -->
+    <TextView
+        android:id="@+id/textViewPlayersTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connected Players:"
+        android:textAllCaps="true"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/buttonConnect"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp"/>
+
+    <ListView
+        android:id="@+id/listViewPlayers"
+        android:layout_width="370dp"
+        android:layout_height="221dp"
+        android:layout_marginTop="8dp"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="1dp"
+        android:choiceMode="singleChoice"
+        android:listSelector="?android:attr/activatedBackgroundIndicator"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewPlayersTitle"
+        app:layout_constraintVertical_bias="0.161" />
+
+    <Button
+        android:id="@+id/buttonRequestUser"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Request User"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/listViewPlayers" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
