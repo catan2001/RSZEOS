@@ -1,19 +1,14 @@
 package com.example.connectfour;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
-import android.view.animation.BounceInterpolator;
-import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainGameLoop extends AppCompatActivity implements ServerHandler {
@@ -22,6 +17,7 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
 
     private String playerUsername;
     private String opponentUsername;
+    private String winOrLose = "Lost";
 
     private ServerConnection serverConnection;
     private Thread connectionThread;
@@ -37,8 +33,9 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
             public void handleOnBackPressed() {
                 // Set result and finish the activity
                 // Say the user is done playing, result goes back to lobby
+                // TODO: Add the logic that should say to the other player that the user exited myb call CLIENT_RESTART:0
                 setResult(RESULT_OK);
-                finish(); // Replaces super.onBackPressed()
+                finish();
             }
         });
 
@@ -61,20 +58,14 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
         // Change the handler in listener so that it uses
         // the one implemented in this class.
         serverConnection.setListenerHandler(this);
-        initializeBoard();  // fill the grid and board
 
-        // Set click listeners for each column
-        GridLayout grid = findViewById(R.id.gridLayout);
-        // Attach listener to all cells once
-        for (int i = 0; i < grid.getChildCount(); i++) {
-            final int index = i;
-            grid.getChildAt(i).setOnClickListener(v -> {
-                int col = index % COLS;
-                dropDisc(col);
-            });
-        }
+        initializeBoard();  // fill the grid and board
+        attachGridListeners(); // attach listeners to all of the grid
     }
 
+    // This method initializes the board so that it looks like
+    // ConnectFour game, it also populates each cell with empty
+    // circle.
     private void initializeBoard() {
         GridLayout grid = findViewById(R.id.gridLayout);
         grid.removeAllViews(); // clear previous views if any
@@ -94,6 +85,39 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
         }
     }
 
+    // For user to be able to click on the cell of the grid
+    // it is necessary to attach setOnclickListener on each of the cells
+    // It is used just once when the MainGameLoop starts and it MUST
+    // go AFTER the initializeBoard since the initialize removes
+    // all of the previous views if there are just in case
+    private void attachGridListeners() {
+        // Set click listeners for each column
+        GridLayout grid = findViewById(R.id.gridLayout);
+        // Attach listener to all cells once
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            final int index = i;
+            grid.getChildAt(i).setOnClickListener(v -> {
+                int col = index % COLS;
+                dropDisc(col);
+            });
+        }
+    }
+
+    // Instead of doing InitializeBoard and again attachGridListeners
+    // we can just change the image resource since the restart of the game
+    // from the players perspective is just a reinitialization of the color
+    // of cells in the grid.
+    private void reInitializeBoard() {
+        GridLayout grid = findViewById(R.id.gridLayout);
+
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            ImageView cell = (ImageView) grid.getChildAt(i);
+            cell.setImageResource(R.drawable.circle_empty);
+        }
+    }
+
+    // Sends a message to the Server with a specific column
+    // the user used.
     private void dropDisc(int col) {
         serverConnection.sendMessage("CLIENT_MOVE:" + col);
     }
@@ -102,59 +126,84 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
     public void handleServerMessage(String message) {
         runOnUiThread(() -> {
             // Checker if the message recieved is following the protocol
-            // SERVER - server message
             if (!message.startsWith("SERVER")) {
-                // TODO: change this one to Logcat
-                Toast.makeText(this, "Invalid server message: " + message, Toast.LENGTH_SHORT).show();
+                Log.d("MainGameLoop", "Invalid server message: " + message);
             } else if (message.startsWith("SERVER_GAME_RESTARTS")) {
-                // Reinitialize the board. This is needed just to visually reset
-                initializeBoard();
+                reInitializeBoard(); // Reinitialize the board. This is needed just to visually reset
+            } else if (message.startsWith("SERVER_GAME_EXIT")) {  // go back to MainActivity
+                setResult(RESULT_OK);
+                finish();
             } else if (message.startsWith("SERVER_GAME_WON")) {
-                // TODO: handle when the player wins
-                Toast.makeText(this, "You won!", Toast.LENGTH_SHORT).show();
+                handleGameStatus("Won");
             } else if (message.startsWith("SERVER_GAME_LOST")) {
-                // TODO: handle when the player loses
-                Toast.makeText(this, "You lost!", Toast.LENGTH_SHORT).show();
-                // Ask a question to a user if he wants to play again
-            } else if (message.startsWith("SERVER_GAME_INVALID_MOVE")) {
-                // if there is already populated spot
+                handleGameStatus("Lost");
+            } else if (message.startsWith("SERVER_GAME_DRAW")) {
+                handleGameStatus("Draw");
+            } else if (message.startsWith("SERVER_GAME_INVALID_MOVE")) {    // if there is already populated spot
                 Toast.makeText(this, "Invalid move! Try a different column.", Toast.LENGTH_SHORT).show();
             } else if (message.startsWith("SERVER_GAME_WAIT_FOR_OPPONENTS_MOVE")) {
                 Toast.makeText(this, "It's your opponents move! Hold on.", Toast.LENGTH_SHORT).show();
             } else if (message.startsWith("SERVER_GAME_MOVE")) {
-                // After the opponent client creates a move, a Server first checks if the move
-                // is valid, if it is valid the player recieves a message that an opponent has
-                // created a move. This is then handled here
-                String position = message.substring("SERVER_GAME_MOVE:".length()).trim();
-                String[] parts = position.split(";");
-
-                if (parts.length == 3) {
-                    try {
-                        int moveByPlayerOne = Integer.parseInt(parts[0]); // 1 if player one, 0 if player two
-                        int row = Integer.parseInt(parts[1]);
-                        int col = Integer.parseInt(parts[2]);
-
-                        // Update the visual side of the board
-                        GridLayout grid = findViewById(R.id.gridLayout);
-                        ImageView cell = (ImageView) grid.getChildAt(row * COLS + col);
-                        if (moveByPlayerOne == 1) {
-                            cell.setImageResource(R.drawable.circle_blue);
-                        } else {
-                            cell.setImageResource(R.drawable.circle_red);
-                        }
-                    } catch (NumberFormatException e) {
-                        Toast.makeText(this, "Invalid move data from server: " + position, Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(this, "Malformed SERVER_GAME_MOVE: " + position, Toast.LENGTH_SHORT).show();
-                }
+                handleGameMove(message);
+            } else if (message.startsWith("SERVER_OPPONENT_DISCONNECTED")) {  // go back to MainActivity
+                Toast.makeText(this, "Opponent has disconnected.", Toast.LENGTH_SHORT).show();
+                setResult(RESULT_OK);
+                finish();
             }
             else {
-                Toast.makeText(this, "Unknown server message WHY: " + message, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Unknown server message: " + message, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    private void handleGameStatus(String status) {
+        Toast.makeText(this, "You " + status + "!", Toast.LENGTH_SHORT).show();
+        winOrLose = status;
+        askAnotherGame(opponentUsername);
+    }
+    private void askAnotherGame(String opponentPlayer) {
+        new AlertDialog.Builder(this).setTitle("You " + winOrLose + " a Game!")
+                .setMessage("Do you want to play another game with " + opponentPlayer + "?")
+                .setPositiveButton("Accept", (dialog, which) -> {
+                    Toast.makeText(this, "Accepted. New Game should start soon", Toast.LENGTH_SHORT).show();
+                    serverConnection.sendMessage("CLIENT_RESTART_GAME:" + 1);
+                })
+                .setNegativeButton("Reject", (dialog, which) -> {
+                    Toast.makeText(this, "Rejected. Going back to lobby.", Toast.LENGTH_SHORT).show();
+                    serverConnection.sendMessage("CLIENT_RESTART_GAME:" + 0);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    // After the opponent client creates a move, a Server first checks if the move
+    // is valid, if it is valid the player recieves a message that an opponent has
+    // created a move. This is then handled here
+    private void handleGameMove(String message) {
+        String position = message.substring("SERVER_GAME_MOVE:".length()).trim();
+        String[] parts = position.split(";");
+
+        if (parts.length == 3) {
+            try {
+                int moveByPlayerOne = Integer.parseInt(parts[0]); // 1 if player one, 0 if player two
+                int row = Integer.parseInt(parts[1]);
+                int col = Integer.parseInt(parts[2]);
+
+                // Update the visual side of the board
+                GridLayout grid = findViewById(R.id.gridLayout);
+                ImageView cell = (ImageView) grid.getChildAt(row * COLS + col);
+                if (moveByPlayerOne == 1) {
+                    cell.setImageResource(R.drawable.circle_blue);
+                } else {
+                    cell.setImageResource(R.drawable.circle_red);
+                }
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "Invalid move data from server: " + position, Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "Malformed SERVER_GAME_MOVE: " + position, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     @Override
     public void handleServerDisconnected() {
@@ -167,14 +216,5 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
             setResult(RESULT_CANCELED); // TODO: ADD THIS TO A MAIN ACTIVITY
             finish();
         });
-    }
-
-    // This method is called on the exit
-    // and it closes the connection and cleans
-    // all of the garbage from threads.
-    @Override protected void onDestroy() {
-        super.onDestroy();
-        if (serverConnection != null) { serverConnection.close(); }
-        if (connectionThread != null && connectionThread.isAlive()) { connectionThread.interrupt(); }
     }
 }

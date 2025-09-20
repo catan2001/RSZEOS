@@ -10,9 +10,15 @@
 - [x] game GUI
 - [x] game logic
 
+## Issues
 - [ ] BUG: there is option for a user to send multiple times request and start a game...
 - [ ] BUG: double removal of the player when the player enters a game and then exits app...
 - [ ] BUG: when one user exits the app while the game is ongoing the other player stays in the game...
 - [ ] MISSING: no draw situation is handled currently
-- [ ] BUG: When creating MainActivity there is no changing of the handle side
-- [ ] BUG: There can be two same usernames...
+- [x] BUG: When the game restarts something weird happens. The user that should play can't play and the opponent has some trouble also.
+- [x] BUG: When the game restarts the player that initiated first game now can't play (on Android): added reinitialize of board
+- [x] BUG: Game crashes when the player on Android rejects the new game: deleted onDestroy part of the code
+
+## Fixed Issues
+- [x] BUG: When creating MainActivity there is no changing of the handle side
+- [x] BUG: There can be two same usernames: This is not fixed but in the task it says that it is not necessary to implement this

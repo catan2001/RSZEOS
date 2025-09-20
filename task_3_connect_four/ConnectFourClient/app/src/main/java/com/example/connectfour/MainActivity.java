@@ -2,6 +2,7 @@ package com.example.connectfour;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -109,6 +110,11 @@ public class MainActivity extends AppCompatActivity implements ServerHandler {
             return;
         }
 
+        if (!isValidIp(serverIp)) {
+            Toast.makeText(this, "Invalid IP address", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         int port;
         try {
             port = Integer.parseInt(portText);
@@ -137,6 +143,25 @@ public class MainActivity extends AppCompatActivity implements ServerHandler {
         connectionThread.start();
     }
 
+    private boolean isValidIp(String ip) {
+        String[] parts = ip.split("\\.");
+        if (parts.length != 4) {
+            return false;
+        }
+        for (String part : parts) {
+            try {
+                int value = Integer.parseInt(part);
+                if (value < 0 || value > 255) {
+                    return false;
+                }
+            } catch (NumberFormatException e) {
+                return false; // not a number
+            }
+        }
+        return true;
+    }
+
+
     // After the player connects to the Server and the Server updates
     // the list of active players ready to play the game,
     // the player can select one of the players and send it a
@@ -163,20 +188,16 @@ public class MainActivity extends AppCompatActivity implements ServerHandler {
         adapter.notifyDataSetChanged();
     }
 
-    // List of active players is connected via adapter to players
-    // to update you just need to call this method after you
-    // update players list.
+    // List of active players is connected via adapter to players. To update you just need
+    // to call this method after you update players list.
     private void updatePlayerList() {
         adapter.notifyDataSetChanged();
     }
 
-    // main hangleServerMessage method that is an implementation
-    // for this main acrivity. Similar to this there is
-    // handleServerMessage for games activity.
-    // Since it handles Server message there is a standardized
-    // way of communication, the message must start with SERVER
-    // if it is comming from the server, and CLIENT if it comes from
-    // the client. This is a way of handling any potential bugs regarding
+    // Main hangleServerMessage method that is an implementation for this main acrivity. Similar to this there is
+    // handleServerMessage for games activity. Since it handles Server message there is a standardized
+    // way of communication, the message must start with SERVER if it is comming from the server,
+    // and CLIENT if it comes from the client. This is a way of handling any potential bugs regarding
     // the communication protocol
     @Override
     public void handleServerMessage(String message) {
@@ -184,124 +205,166 @@ public class MainActivity extends AppCompatActivity implements ServerHandler {
             // Checker if the message recieved is following the protocol
             // SERVER - server message
             if (!message.startsWith("SERVER")) {
-                // TODO: change this one to Logcat
-                Toast.makeText(this, "Invalid server message: " + message, Toast.LENGTH_SHORT).show();
+                Log.d("MainActivity", "Invalid server message: " + message);
             } else if (message.startsWith("SERVER_LOGIN_OK")) {
-                buttonRequestUser.setEnabled(true);
-                listView.setEnabled(true);
-                // Send username with a clear tag, This is fine because sendMessage
-                // creates it's own thread for sending the message which avoids
-                // the conflict of running on same UI thread.
-                serverConnection.sendMessage("CLIENT_USERNAME:" + username);
-                Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show();
+                handleLogin(message);
             } else if (message.startsWith("SERVER_LOGIN_FAILED_CONNECTION_ISSUE")) {
-                // If there is some error after connecting to the server,
-                // the server sends this message to notify the player.
-                buttonRequestUser.setEnabled(false);
-                listView.setEnabled(false);
-                Toast.makeText(this, "Login failed: Connection issue", Toast.LENGTH_LONG).show();
+                handleFailedLoginCI(message);
             } else if (message.startsWith("SERVER_LOGIN_FAILED_USERNAME_ISSUE")) {
-                // self explanatory.
-                buttonRequestUser.setEnabled(false);
-                listView.setEnabled(false);
-                Toast.makeText(this, "Login failed: Username is already used", Toast.LENGTH_LONG).show();
+                handleFailedUsername();
             } else if (message.startsWith("SERVER_PLAYER_LIST:")) {
-                // Replace the whole list of players everytime a player logs
-                // after this the server is sending a message if there are some log changes
-                String listStr = message.substring("SERVER_PLAYER_LIST:".length()).trim();
-                players.clear();
-                if (!listStr.isEmpty()) {
-                    String[] playerArray = listStr.split(",");
-                    for (String player : playerArray) { players.add(player.trim()); }
-                }
-                updatePlayerList();
+                handlePlayerList(message);
             } else if (message.startsWith("SERVER_PLAYER_JOINED:")) {
-                // After the player connects and receives the full list of all players,
-                // the server sends it a message if a new player joins the server.
-                // The app then updates the list of all users that are ready to play.
-                String newPlayer = message.substring("SERVER_PLAYER_JOINED:".length()).trim();
-                if (!players.contains(newPlayer)) {
-                    players.add(newPlayer);
-                    updatePlayerList();
-                }
+                handlePlayerJoined(message);
             } else if (message.startsWith("SERVER_PLAYER_LEFT:")) {
-                // After the player connects and receives the full list of all players,
-                // the server sends it a message if some player leaves the server.
-                // The app then updates the list of all users that are ready to play.
-                String leftPlayer = message.substring("SERVER_PLAYER_LEFT:".length()).trim();
-                players.remove(leftPlayer);
-                updatePlayerList();
+                handlePlayerLeft(message);
             } else if (message.startsWith("SERVER_PLAYER_STARTED_GAME:")) {
-                // After the player connects and receives the full list of all players,
-                // the server sends it a message if some player starts a game.
-                // The app then updates the list of all users that are ready to play.
-                // TODO: what if a player has started a game and then inside of it the player
-                // TODO: disconnects from the server? There would be double remove
-                String busyPlayer = message.substring("SERVER_PLAYER_STARTED_GAME:".length()).trim();
-                players.remove(busyPlayer);
-                updatePlayerList();
-                Toast.makeText(this, busyPlayer + " started a game.", Toast.LENGTH_SHORT).show();
+                handlePlayerStartedGame(message);
             } else if (message.startsWith("SERVER_PLAYER_ACCEPTED")) {
-                // This one may be unnecessary since the current player will not see the list and update
-                // but for now lets use it nonetheless.
-                String acceptedPlayer = message.substring("SERVER_PLAYER_ACCEPTED".length()).trim();
-                players.remove(acceptedPlayer);
-                updatePlayerList();
-                Toast.makeText(this, acceptedPlayer + " accepted your request!", Toast.LENGTH_LONG).show();
+                handlePlayerAcceptedGame(message);
             } else if (message.startsWith("SERVER_PLAYER_REJECTED")) {
-                // self explanatory
-                String rejectedPlayer = message.substring("SERVER_PLAYER_REJECTED".length()).trim();
-                Toast.makeText(this, rejectedPlayer + " rejected your request.", Toast.LENGTH_LONG).show();
-                // clear the choice user selected, this is better because it forces the player to reach out again
-                listView.clearChoices();
-                adapter.notifyDataSetChanged(); // eliminates the problem with highlight
+                handlePlayerRejectedGame(message);
             } else if (message.startsWith("SERVER_INCOMING_REQUEST")) {
-                // ping the current player that someone is requesting to start a game
-                String requestPlayer = message.substring("SERVER_INCOMING_REQUEST:".length()).trim();
-                showIncomingRequestDialog(requestPlayer);
-            } else if (message.startsWith("SERVER_PLAYER_NOT_AVAILABLE")) {
-                // ping the current player that the requested player is not available
-                // but maybe this one is necessary since the user will only interact
-                // using the app and not from a terminal...
-                String requestedPlayer = message.substring("SERVER_PLAYER_NOT_AVAILABLE:".length()).trim();
-                Toast.makeText(this, requestedPlayer + " -> player you tried to reach is not available", Toast.LENGTH_SHORT).show();
-            } else if (message.startsWith("SERVER_REQUEST_CANCELLED")) {
-                // ping the current player that even if he accepts the request by the user
-                String requestPlayer = message.substring("SERVER_REQUEST_CANCELLED:".length()).trim();
-                Toast.makeText(this, requestPlayer + " -> player that reached out to you is not available", Toast.LENGTH_SHORT).show();
-            } else if (message.startsWith("SERVER_GAME_READY")) {
-                // TODO: Implement the logic. After both players accept the game can start
-                String payload = message.substring("SERVER_GAME_READY:".length()).trim();
-                String[] parts = payload.split(";");
-                int isPlayerOne = Integer.parseInt(parts[0]);
-                String opponentUsername = parts[1];
-                startTheGame(isPlayerOne, opponentUsername);
+                handleIncomingRequest(message);
             } else if (message.startsWith("SERVER_PLAYER_AVAILABLE:")) {
-                // When the player finishes playing, the Server gets a message and sends
-                // to all of the users this message to add again this user into available players.
-                String availablePlayer = message.substring("SERVER_PLAYER_AVAILABLE:".length()).trim();
-                if (!players.contains(availablePlayer)) {
-                    players.add(availablePlayer);
-                    updatePlayerList();
-                }
+                handlePlayerAvailable(message);
+            } else if (message.startsWith("SERVER_PLAYER_NOT_AVAILABLE")) {
+                handlePlayerNotAvailable(message);
+            } else if (message.startsWith("SERVER_REQUEST_CANCELLED")) {
+                handleRequestCancelled(message);
+            } else if (message.startsWith("SERVER_GAME_READY")) {
+                handleGameReady(message);
             } else {
                 Toast.makeText(this, "MainActivity: Unknown server message: " + message, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // Overrides/implements the handling method handleServerDisconnected which is used
-    // when the server disconnects. This method restores the app to it's previous state if
-    // the current app is running from MainActivity - lobby)
-    @Override
-    public void handleServerDisconnected() {
-        runOnUiThread(() -> {
-            Toast.makeText(this, "Disconnected from server", Toast.LENGTH_LONG).show();
-            buttonRequestUser.setEnabled(false);
-            listView.setEnabled(false);
-            players.clear();
-            adapter.notifyDataSetChanged();
-        });
+    // Enable user to send a request to other players after login
+    private void handleLogin(String message) {
+        buttonRequestUser.setEnabled(true);
+        listView.setEnabled(true);
+
+        // Send username with a clear tag, This is fine because sendMessage
+        // creates it's own thread for sending the message which avoids
+        // the conflict of running on same UI thread.
+        serverConnection.sendMessage("CLIENT_USERNAME:" + username);
+        Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handleFailedLoginCI(String message) {
+        // If there is some error after connecting to the server,
+        // the server sends this message to notify the player.
+        buttonRequestUser.setEnabled(false);
+        listView.setEnabled(false);
+        Toast.makeText(this, "Login failed: Connection issue", Toast.LENGTH_LONG).show();
+    }
+
+    private void handleFailedUsername() {
+        // self explanatory.
+        buttonRequestUser.setEnabled(false);
+        listView.setEnabled(false);
+        Toast.makeText(this, "Login failed: Username is already used", Toast.LENGTH_LONG).show();
+    }
+
+    private void handlePlayerList(String message) {
+        // Replace the whole list of players everytime a player logs
+        // after this the server is sending a message if there are some log changes
+        String listStr = message.substring("SERVER_PLAYER_LIST:".length()).trim();
+        players.clear();
+        if (!listStr.isEmpty()) {
+            String[] playerArray = listStr.split(",");
+            for (String player : playerArray) { players.add(player.trim()); }
+        }
+        updatePlayerList();
+    }
+
+    private void handlePlayerJoined(String message) {
+        // After the player connects and receives the full list of all players,
+        // the server sends it a message if a new player joins the server.
+        // The app then updates the list of all users that are ready to play.
+        String newPlayer = message.substring("SERVER_PLAYER_JOINED:".length()).trim();
+        if (!players.contains(newPlayer)) {
+            players.add(newPlayer);
+            updatePlayerList();
+        }
+    }
+
+    private void handlePlayerLeft(String message) {
+        // After the player connects and receives the full list of all players,
+        // the server sends it a message if some player leaves the server.
+        // The app then updates the list of all users that are ready to play.
+        String leftPlayer = message.substring("SERVER_PLAYER_LEFT:".length()).trim();
+        players.remove(leftPlayer);
+        updatePlayerList();
+    }
+
+    private void handlePlayerStartedGame(String message) {
+        // After the player connects and receives the full list of all players,
+        // the server sends it a message if some player starts a game.
+        // The app then updates the list of all users that are ready to play.
+        // TODO: what if a player has started a game and then inside of it the player
+        // TODO: disconnects from the server? There would be double remove
+        String busyPlayer = message.substring("SERVER_PLAYER_STARTED_GAME:".length()).trim();
+        players.remove(busyPlayer);
+        updatePlayerList();
+        Toast.makeText(this, busyPlayer + " started a game.", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handlePlayerAcceptedGame(String message) {
+        // This one may be unnecessary since the current player will not see the list and update
+        // but for now lets use it nonetheless.
+        String acceptedPlayer = message.substring("SERVER_PLAYER_ACCEPTED".length()).trim();
+        players.remove(acceptedPlayer);
+        updatePlayerList();
+        Toast.makeText(this, acceptedPlayer + " accepted your request!", Toast.LENGTH_LONG).show();
+    }
+
+    private void handlePlayerRejectedGame(String message) {
+        // self explanatory
+        String rejectedPlayer = message.substring("SERVER_PLAYER_REJECTED".length()).trim();
+        Toast.makeText(this, rejectedPlayer + " rejected your request.", Toast.LENGTH_LONG).show();
+        // clear the choice user selected, this is better because it forces the player to reach out again
+        listView.clearChoices();
+        adapter.notifyDataSetChanged(); // eliminates the problem with highlight
+    }
+
+    private void handleIncomingRequest(String message) {
+        // ping the current player that someone is requesting to start a game
+        String requestPlayer = message.substring("SERVER_INCOMING_REQUEST:".length()).trim();
+        showIncomingRequestDialog(requestPlayer);
+    }
+
+    private void handlePlayerNotAvailable(String message) {
+        // ping the current player that the requested player is not available
+        // but maybe this one is necessary since the user will only interact
+        // using the app and not from a terminal...
+        String requestedPlayer = message.substring("SERVER_PLAYER_NOT_AVAILABLE:".length()).trim();
+        Toast.makeText(this, requestedPlayer + " -> player you tried to reach is not available", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handleRequestCancelled(String message) {
+        // ping the current player that even if he accepts the request by the user
+        String requestPlayer = message.substring("SERVER_REQUEST_CANCELLED:".length()).trim();
+        Toast.makeText(this, requestPlayer + " -> player that reached out to you is not available", Toast.LENGTH_SHORT).show();
+    }
+
+    private void handleGameReady(String message) {
+        String payload = message.substring("SERVER_GAME_READY:".length()).trim();
+        String[] parts = payload.split(";");
+        int isPlayerOne = Integer.parseInt(parts[0]);
+        String opponentUsername = parts[1];
+        startTheGame(isPlayerOne, opponentUsername);
+    }
+
+    private void handlePlayerAvailable(String message) {
+        // When the player finishes playing, the Server gets a message and sends
+        // to all of the users this message to add again this user into available players.
+        String availablePlayer = message.substring("SERVER_PLAYER_AVAILABLE:".length()).trim();
+        if (!players.contains(availablePlayer)) {
+            players.add(availablePlayer);
+            updatePlayerList();
+        }
     }
 
     // This is a small helper method that creates a new object that
@@ -327,8 +390,8 @@ public class MainActivity extends AppCompatActivity implements ServerHandler {
     private void startTheGame(int isPlayerOne, String opponentUsername) {
         // When you send this the Server should respond with SERVER_GAME_READY if the
         // other player is still in the lobby, if not then it returns SERVER_REQUEST_CANCELLED.
-        // This is a handshake method.
-        // create a singleton and initialize it...
+        // This is a handshake method. It also creates a singleton and initialize so that
+        // next activity can use this the serverConnection.
         ConnectionManager.getInstance().setConnection(serverConnection, connectionThread);
         Intent intent = new Intent(this, MainGameLoop.class);
         intent.putExtra("IS_PLAYER_ONE", isPlayerOne); // this is used if the
@@ -339,29 +402,46 @@ public class MainActivity extends AppCompatActivity implements ServerHandler {
         activityLauncher.launch(intent);
     }
 
-    // get a result back when it finishes
+    // This creates an activity launcher for starting another activity (MainGameLoop will be called)
+    // and also it sets up the callback mechanism when the game activity finishes and returns
+    // control back to the lobby
     ActivityResultLauncher<Intent> activityLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
+            // a callback lambda method that runs when the launched activity
+            // returns. It basically sets back the handler of the listener to be the one
+            // implemented in this class and notifies all other users that the player is
+            // available again
             result -> {
                 // This block runs when MainGameLoop finishes
                 if (result.getResultCode() == RESULT_OK) {
-                    // At this point, the user finished a game it could be both that he exited
-                    // or just finished a game
-                    // We want to notify the server that this user is available again
-
+                    // Change the handler in listener so that it uses
+                    // the one implemented in this class.
+                    serverConnection.setListenerHandler(this);
                     // Send a message back to the server that we are free
                     serverConnection.sendMessage("CLIENT_PLAYER_AVAILABLE:" + username);
-                    // Optionally also immediately re-enable the request button & list
+                    // also immediately re-enable the request button & list
                     buttonRequestUser.setEnabled(true);
                     listView.setEnabled(true);
-                    Toast.makeText(this, "You are available again.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "You are back to the Lobby again.", Toast.LENGTH_SHORT).show();
                 }
             }
     );
 
+    // Overrides/implements the handling method handleServerDisconnected which is used
+    // when the server disconnects. This method restores the app to it's previous state if
+    // the current app is running from MainActivity - lobby)
+    @Override
+    public void handleServerDisconnected() {
+        runOnUiThread(() -> {
+            Toast.makeText(this, "Disconnected from server", Toast.LENGTH_LONG).show();
+            buttonRequestUser.setEnabled(false);
+            listView.setEnabled(false);
+            players.clear();
+            adapter.notifyDataSetChanged();
+        });
+    }
 
-    // This method is called on the exit
-    // and it closes the connection and cleans
+    // This method is called on the exit and it closes the connection and cleans
     // all of the garbage from threads.
     @Override
     protected void onDestroy() {
