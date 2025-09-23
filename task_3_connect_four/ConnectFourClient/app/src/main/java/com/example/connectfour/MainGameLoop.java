@@ -34,6 +34,7 @@ public class MainGameLoop extends AppCompatActivity implements ServerHandler {
                 // Set result and finish the activity
                 // Say the user is done playing, result goes back to lobby
                 // TODO: Add the logic that should say to the other player that the user exited myb call CLIENT_RESTART:0
+                serverConnection.sendMessage("CLIENT_RESTART_GAME:" + 0);
                 setResult(RESULT_OK);
                 finish();
             }

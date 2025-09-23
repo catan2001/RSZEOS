@@ -33,6 +33,7 @@ public class ConnectedClient implements Runnable {
 
     // Client state
     private String username;
+    private String requestedUser;
     private volatile boolean running = true; // used to check if the user is alive
 
     /* Protocol message constants */
@@ -51,6 +52,7 @@ public class ConnectedClient implements Runnable {
         this.socket = socket;
         this.server = server;
         this.username = ""; // Set after login
+        this.requestedUser = "";
 
         try {
             this.reader = new BufferedReader(
@@ -167,6 +169,7 @@ public class ConnectedClient implements Runnable {
     private void handleGameRequest(String command) {
         String targetPlayer = command.substring(CLIENT_REQUEST_GAME_PREFIX.length()).trim();
         ConnectedClient target = server.getClientByUsername(targetPlayer);
+        requestedUser = targetPlayer; // used to check if a user sent a request to other user
 
         if (target != null) {
             target.sendMessage("SERVER_INCOMING_REQUEST:" + username);
@@ -177,22 +180,25 @@ public class ConnectedClient implements Runnable {
 
     private void handleGameAcceptance(String command) {
         String targetPlayer = command.substring(CLIENT_ACCEPT_GAME_PREFIX.length()).trim();
-        ConnectedClient target = server.getClientByUsername(targetPlayer);
+        if(requestedUser.equals(targetPlayer)){ // checks if a user has requested the game
+            requestedUser = ""; // lock the user back so the other user can't fool him
+            ConnectedClient target = server.getClientByUsername(targetPlayer);
 
-        if (target == null) {
-            sendMessage("SERVER_PLAYER_NOT_AVAILABLE:" + targetPlayer);
-            return;
+            if (target == null) {
+                sendMessage("SERVER_PLAYER_NOT_AVAILABLE:" + targetPlayer);
+                return;
+            }
+            // Notify the requesting player about the acceptance
+            target.sendMessage("SERVER_PLAYER_ACCEPTED:" + username);
+            // Set up the game for both players
+            target.sendMessage("SERVER_GAME_READY:1;" + username);  // Player 1
+            sendMessage("SERVER_GAME_READY:0;" + targetPlayer);     // Player 2
+            notifyPlayersInGame(targetPlayer);
+
+            // start the game player 1 and player 2 
+            GameSession session = new GameSession(target, this);
+            server.addGameSession(session);
         }
-        // Notify the requesting player about the acceptance
-        target.sendMessage("SERVER_PLAYER_ACCEPTED:" + username);
-        // Set up the game for both players
-        target.sendMessage("SERVER_GAME_READY:1;" + username);  // Player 1
-        sendMessage("SERVER_GAME_READY:0;" + targetPlayer);     // Player 2
-        notifyPlayersInGame(targetPlayer);
-        
-        // start the game player 1 and player 2 
-        GameSession session = new GameSession(target, this);
-        server.addGameSession(session);
     }
 
     private void notifyPlayersInGame(String targetPlayer) {
@@ -206,12 +212,15 @@ public class ConnectedClient implements Runnable {
 
     private void handleGameRejection(String command) {
         String targetPlayer = command.substring(CLIENT_REJECT_GAME_PREFIX.length()).trim();
-        ConnectedClient target = server.getClientByUsername(targetPlayer);
+        if(requestedUser.equals(targetPlayer)){ // checks if a user has requested the game
+            requestedUser = ""; // lock the user back so the other user can't fool him
+            ConnectedClient target = server.getClientByUsername(targetPlayer);
 
-        if (target != null) {
-            target.sendMessage("SERVER_PLAYER_REJECTED:" + username);
-        } else {
-            sendMessage("SERVER_PLAYER_NOT_AVAILABLE:" + targetPlayer);
+            if (target != null) {
+                target.sendMessage("SERVER_PLAYER_REJECTED:" + username);
+            } else {
+                sendMessage("SERVER_PLAYER_NOT_AVAILABLE:" + targetPlayer);
+            }
         }
     }
 
