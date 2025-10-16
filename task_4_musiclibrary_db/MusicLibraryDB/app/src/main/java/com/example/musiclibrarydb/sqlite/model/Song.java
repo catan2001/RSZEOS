@@ -10,19 +10,6 @@ public class Song {
     public Song() {
     }
 
-    public Song(String name, String genre, String artist) {
-        this.name = name;
-        this.genre = genre;
-        this.artist = artist;
-    }
-
-    public Song(int id, String name, String genre, String artist) {
-        this.id = id;
-        this.name = name;
-        this.genre = genre;
-        this.artist = artist;
-    }
-
     public int getId() {
         return id;
     }

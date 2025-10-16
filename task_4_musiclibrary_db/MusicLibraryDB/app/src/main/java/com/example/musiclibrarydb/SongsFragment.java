@@ -143,12 +143,14 @@ public class SongsFragment extends Fragment implements SongAdapter.OnSongClickLi
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String selectedArtist = artistNames.get(position);
-                int artistId = dbHelper.getArtistIdByName(selectedArtist);
-                int genreId = dbHelper.getGenreIdByArtistId(artistId);
-                if (genreId > 0) {
-                    String genreName = dbHelper.getGenreNameById(genreId);
-                    int pos = genreNames.indexOf(genreName);
-                    if (pos >= 0) genreSpinner.setSelection(pos);
+                Integer artistId = dbHelper.getArtistIdByName(selectedArtist);
+                if (artistId != null) {
+                    Integer genreId = dbHelper.getGenreIdByArtistId(artistId);
+                    if (genreId != null) {
+                        String genreName = dbHelper.getGenreNameById(genreId);
+                        int pos = genreNames.indexOf(genreName);
+                        if (pos >= 0) genreSpinner.setSelection(pos);
+                    }
                 }
             }
             @Override
@@ -219,12 +221,14 @@ public class SongsFragment extends Fragment implements SongAdapter.OnSongClickLi
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String selectedArtist = artistNames.get(position);
-                int artistId = dbHelper.getArtistIdByName(selectedArtist);
-                int genreId = dbHelper.getGenreIdByArtistId(artistId);
-                if (genreId > 0) {
-                    String genreName = dbHelper.getGenreNameById(genreId);
-                    int pos = genreNames.indexOf(genreName);
-                    if (pos >= 0) genreSpinner.setSelection(pos);
+                Integer artistId = dbHelper.getArtistIdByName(selectedArtist);
+                if (artistId != null) {
+                    Integer genreId = dbHelper.getGenreIdByArtistId(artistId);
+                    if (genreId != null) {
+                        String genreName = dbHelper.getGenreNameById(genreId);
+                        int pos = genreNames.indexOf(genreName);
+                        if (pos >= 0) genreSpinner.setSelection(pos);
+                    }
                 }
             }
             @Override
@@ -254,15 +258,18 @@ public class SongsFragment extends Fragment implements SongAdapter.OnSongClickLi
     // -----------------------
     private void searchSongs() {
         String query = etSearchSongName.getText().toString().trim();
-        String artist = spinnerArtistFilter.getSelectedItem().toString();
-        String genre = spinnerGenreFilter.getSelectedItem().toString();
+        String artistFilter = spinnerArtistFilter.getSelectedItem().toString();
+        String genreFilter = spinnerGenreFilter.getSelectedItem().toString();
 
-        artist = artist.equals("None") ? null : artist;
-        genre = genre.equals("None") ? null : genre;
-        query = "%" + query + "%";
+        // Use null for filters if "None" is selected
+        String artist = artistFilter.equals("None") ? null : artistFilter;
+        String genre = genreFilter.equals("None") ? null : genreFilter;
+
+        // Add '%' wildcards for LIKE query
+        String nameQuery = "%" + query + "%";
 
         songList.clear();
-        songList.addAll(dbHelper.searchSongs(query, genre, artist));
+        songList.addAll(dbHelper.searchSongs(nameQuery, genre, artist));
 
         if (songAdapter == null) {
             songAdapter = new SongAdapter(songList, this);

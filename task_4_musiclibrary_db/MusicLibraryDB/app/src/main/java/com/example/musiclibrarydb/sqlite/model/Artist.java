@@ -8,18 +8,6 @@ public class Artist {
 
     public Artist() {}
 
-    public Artist(String name, int genreId) {
-        this.name = name;
-        this.genreId = genreId;
-    }
-
-    public Artist(int id, String name, int genreId, String genre) {
-        this.id = id;
-        this.name = name;
-        this.genreId = genreId;
-        this.genre = genre;
-    }
-
     public int getId() {
         return id;
     }
@@ -38,10 +26,6 @@ public class Artist {
 
     public int getGenreId() {
         return genreId;
-    }
-
-    public void setGenreId(int genreId) {
-        this.genreId = genreId;
     }
 
     public String getGenre() {

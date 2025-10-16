@@ -41,10 +41,6 @@ public class Playlist {
         this.description = description;
     }
 
-    public int getUserId() {
-        return userId;
-    }
-
     public void setUserId(int userId) {
         this.userId = userId;
     }

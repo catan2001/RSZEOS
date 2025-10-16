@@ -6,7 +6,6 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
-import com.example.musiclibrarydb.sqlite.model.User;
 import com.example.musiclibrarydb.sqlite.model.Artist;
 import com.example.musiclibrarydb.sqlite.model.Genre;
 import com.example.musiclibrarydb.sqlite.model.Song;
@@ -431,37 +430,56 @@ public class MusicLibraryDBHelper extends SQLiteOpenHelper {
     // -----------------------
     public List<Song> searchSongs(String nameQuery, String genre, String artist) {
         List<Song> songs = new ArrayList<>();
-        String query = "SELECT s.id, s.name, a.name, g.name " +
-                "FROM songs s " +
-                "LEFT JOIN artists a ON s.artist_id = a.id " +
-                "LEFT JOIN genres g ON s.genre_id = g.id " +
-                "WHERE s.name LIKE ? ";
-        List<String> args = new ArrayList<>();
-        args.add("%" + nameQuery + "%");
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append("SELECT s.").append(KEY_ID)
+                .append(", s.").append(KEY_SONG_NAME)
+                .append(", a.").append(KEY_ARTIST_NAME)
+                .append(", g.").append(KEY_GENRE_NAME)
+                .append(" FROM ").append(TABLE_SONGS).append(" s ")
+                .append("LEFT JOIN ").append(TABLE_ARTISTS).append(" a ON s.").append(KEY_SONG_ARTIST_ID).append(" = a.").append(KEY_ID).append(" ")
+                .append("LEFT JOIN ").append(TABLE_GENRES).append(" g ON s.").append(KEY_SONG_GENRE_ID).append(" = g.").append(KEY_ID).append(" ")
+                .append("WHERE 1=1 ");
+
+        List<String> selectionArgs = new ArrayList<>();
+
+        if (nameQuery != null && !nameQuery.isEmpty()) {
+            queryBuilder.append("AND s.").append(KEY_SONG_NAME).append(" LIKE ? ");
+            selectionArgs.add(nameQuery);
+        }
 
         if (genre != null && !genre.equals("None")) {
-            query += "AND g.name LIKE ? ";
-            args.add("%" + genre + "%");
+            queryBuilder.append("AND g.").append(KEY_GENRE_NAME).append(" LIKE ? ");
+            selectionArgs.add("%" + genre + "%"); // Partial matching
         }
-        if (artist != null && !artist.equals("None")) {
-            query += "AND a.name LIKE ? ";
-            args.add("%" + artist + "%");
-        }
-        query += "ORDER BY s.name ASC";
 
-        try (SQLiteDatabase db = getReadableDatabase();
-             Cursor c = db.rawQuery(query, args.toArray(new String[0]))) {
-            if (c.moveToFirst()) {
-                do {
-                    Song s = new Song();
-                    s.setId(c.getInt(0));
-                    s.setName(c.getString(1));
-                    s.setArtist(c.getString(2) != null ? c.getString(2) : UNKNOWN_ARTIST);
-                    s.setGenre(c.getString(3) != null ? c.getString(3) : UNKNOWN_GENRE);
-                    songs.add(s);
-                } while (c.moveToNext());
-            }
+        if (artist != null && !artist.equals("None")) {
+            queryBuilder.append("AND a.").append(KEY_ARTIST_NAME).append(" LIKE ? ");
+            selectionArgs.add("%" + artist + "%"); // Partial matching
         }
+
+        queryBuilder.append("ORDER BY s.").append(KEY_SONG_NAME).append(" ASC");
+
+        Cursor cursor = db.rawQuery(queryBuilder.toString(), selectionArgs.toArray(new String[0]));
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                int id = cursor.getInt(0);
+                String name = cursor.getString(1);
+                String artistName = cursor.getString(2);
+                String genreName = cursor.getString(3);
+
+                Song song = new Song();
+                song.setId(id);
+                song.setName(name);
+                song.setArtist(artistName != null ? artistName : UNKNOWN_ARTIST);
+                song.setGenre(genreName != null ? genreName : UNKNOWN_GENRE);
+                songs.add(song);
+            }
+            cursor.close();
+        }
+
         return songs;
     }
 
